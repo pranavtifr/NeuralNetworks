@@ -4,17 +4,15 @@ import random
 stepsize= 1 
 imgsize = 3
 clssize = 2
-datasize = 1000
+datasize = 2000
 testsize = 10
 regstren = 1e-3
-totalepoch = 200
+totalepoch = 10
 # The Image class containing the image vector and the correct class of the image
 class images:
   def __init__(self,v,correct):
     self.v = v
     self.ans = correct
-
-
 
 #Class to have the Entire network made up of the Layers
 class network:
@@ -29,7 +27,6 @@ class network:
     for i in range(self.layers-1):
       self.lay.append(layer(k[i],k[i+1]))
 
-
   def Nclassify(self,img):
     k = img
     temp = img
@@ -39,34 +36,57 @@ class network:
     return k
 
   def train(self,img):
-    reg = self.lay[0].m
-    loss = 0;
-    #print("Training")
-   # self.lay[0].disp()
+    print('In Train')
+    loss = 0
     for i in range(datasize):
-      f = self.lay[0].Lclassify(img[i])
-     # print('Scores',f)
-      p = softmax(f)
-      #print('SoftMax',p)
-      loss += lossval(p,img[i].ans)
-      #print('Loss',loss)
-      df = lossgrad(p,img[i].ans)
-      #print('LossGrad',df)
-      self.lay[0].update(img[i].v,df)    
-    #print('After Update')
-    #self.lay[0].disp()
-    self.lay[0].m -= reg*regstren #Regularisation Gradient
-    print(loss) # Prints loss after every epoch. Comment if not needed
-
-  def test(self,img):
-    for i in range(testsize):
-      print("Test" ,i)
-      f=self.Nclassify(img[i])
-      #print(f)
-      p = softmax(f)
-      disp(img[i])
+      f = []
+      k = img[i]
+      for l in range(self.layers-1):
+        k = self.lay[l].Lclassify(k)
+        disp(k)
+        f.append(k)
+      print('Forward')
+      f[0].v = [ 0.02423333, -0.31737436]
+      disp(f[0])
+      print('__')
+      p = softmax(f[self.layers-2].v)
       print(p)
+      disp(f[0])
+      print("_______")
+      loss += lossval(p,img[i].ans)
+      df = lossgrad(p,img[i].ans) #Found Gradient on the Final Scores
+      for m in reversed(range(self.layers-1)):
+        disp(f[m])
+      print('Backward')
+      #BackPropagation
+      dh = df
+      for m in reversed(range(self.layers-1)):
+        w = self.lay[m]
+        reg = self.lay[m].m
+        self.lay[m].update(f[m].v,dh)
+        dh = sigmaprime(f[m].v,dh)
+        for j in range(self.lay[m].y):
+          sum = 0
+          for i in range(self.lay[m].x):
+            sum += dh[i]*w[j][i]
+          dh[j] = sum
+        self.lay[m].m -= reg*regstren #Regularisation Gradient
+      #Regularization Loss in Every Matrix
+    print(loss/datasize) # Prints loss after every epoch. 
 
+  def test(self,allimgs):
+    count = 0
+    for img in allimgs:
+      #print("Test" ,i)
+      f=self.Nclassify(img)
+      #print(f)
+      p = softmax(f.v)
+      disp(img)
+      print(p)
+      if p[img.ans] > 0.90:
+        count += 1
+    print('Test Results')
+    print(count,testsize)
 
 
 
@@ -81,7 +101,7 @@ class layer:
     print(self.m)
   
   def Lclassify(self,img):
-    f = sigma(self.m.dot(img.v)) #Sigma is the Non Linearity Term
+    f = images(sigma(self.m.dot(img.v)),img.ans) #Sigma is the Non Linearity Term
     return f
 
   def update(self,val,chain):
@@ -89,9 +109,9 @@ class layer:
     #Matrix Back Propagation
     for i in range(self.y):
       for j in range(self.x):
-        self.m[i][j] -= stepsize*k[i]*val[j] #This is Steepest Gradient Try others later
-   
+        self.m[i][j] -= stepsize*k[i]*val[j] #This is Steepest Gradient Try others later 
     self.b -= chain 
+
 #Class Definition Ends  
 
 #SoftMax Squash
@@ -139,20 +159,18 @@ def gendata(size):
 data = gendata(datasize)
 check = gendata(testsize)
 net = network(2,[imgsize,clssize])
-#print('This is the Image')
-#disp(data[0])
+print('This is the Image')
+disp(data[0])
 for epoch in range(totalepoch):
   print('Epoch',epoch)
   net.train(data)
   print('_____________________________')
-
 net.test(check)
+print("This Works")
 
-print("all ok")
+# l = []
+# f = [1,2,3,4,5]
+# l.append(f)
+# print(softmax(l[0]))
+# print(l[0])
 
-
-#l = layer(imgsize,clssize)
-#img = np.random.random((imgsize))
-#l.disp()
-#l.update([1,1,1],[1,1,1])
-#l.disp()
